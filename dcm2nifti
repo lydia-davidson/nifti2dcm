@@ -1,0 +1,63 @@
+import os
+import numpy as np
+import pydicom
+import nibabel as nib
+
+
+def load_dicom_series(directory):
+    # Read all DICOM files in the directory, sort them by Instance Number
+    dicom_files = [pydicom.dcmread(os.path.join(directory, f)) for f in os.listdir(directory) if f.endswith('.dcm')]
+    dicom_files.sort(key=lambda x: int(x.InstanceNumber))
+
+    # Stack arrays into a single multi-dimensional array (assuming all images have the same size)
+    dicom_array = np.stack([ds.pixel_array for ds in dicom_files])
+    return dicom_files, dicom_array
+
+
+def save_modified_dicom_series(dicom_files, modified_array, output_directory):
+    # Make sure output directory exists
+    os.makedirs(output_directory, exist_ok=True)
+
+    for i, ds in enumerate(dicom_files):
+        # Update pixel data
+        ds.PixelData = modified_array[i].tobytes()
+        ds.Rows, ds.Columns = modified_array[i].shape
+
+        # Save the modified DICOM file
+        ds.save_as(os.path.join(output_directory, f"modified_{i}.dcm"))
+
+
+def main(dicom_directory, nifti_file, output_directory):
+    # Load DICOM series
+    dicom_files, dicom_array = load_dicom_series(dicom_directory)
+
+    # Load NIfTI file
+    nii = nib.load(nifti_file)
+    nifti_array = nii.get_fdata()
+
+    # Print dimensions for debugging
+    print("DICOM array dimensions:", dicom_array.shape)
+    print("NIfTI array dimensions:", nifti_array.shape)
+
+    # Transpose the NIfTI array to match DICOM dimensions (slices, height, width)
+    nifti_array = np.transpose(nifti_array, (2, 0, 1))
+    print("Transposed NIfTI array dimensions:", nifti_array.shape)
+
+    # Check dimensions
+    if dicom_array.shape != nifti_array.shape:
+        raise ValueError("DICOM and NIfTI arrays do not have the same dimensions after transposition.")
+
+    # Replace DICOM array with NIfTI array
+    dicom_array = nifti_array
+
+    # Save modified DICOM series
+    save_modified_dicom_series(dicom_files, dicom_array.astype(dicom_files[0].pixel_array.dtype), output_directory)
+
+# Provide the paths to your DICOM series directory, NIfTI file, and output directory
+dicom_directory = r'C:\Users\lidio\Documents\MATLAB\ying hwei code\Testbrain'
+nifti_file = r'C:\Users\lidio\Documents\MATLAB\ying hwei code\Testbrain\BRAIN007_Brain30sec_RegressTree_3x3.nii'
+output_directory = r'C:\Users\lidio\Documents\MATLAB\ying hwei code\Testbrain\output'
+
+
+# Run the main function
+main(dicom_directory, nifti_file, output_directory)
