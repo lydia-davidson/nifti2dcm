@@ -1,0 +1,36 @@
+#changes the dcm metadata to correct orientation if its been created with a nifti
+
+import os
+import pydicom
+
+
+def update_dicom_orientation(directory, new_row_cosines, new_col_cosines):
+    # List all DICOM files in the specified directory
+    dicom_files = [f for f in os.listdir(directory) if f.endswith('.dcm')]
+
+    # Iterate through each DICOM file
+    for file_name in dicom_files:
+        file_path = os.path.join(directory, file_name)
+        # Load the DICOM file
+        dcm = pydicom.dcmread(file_path)
+
+        # Update the Image Orientation (Patient) tag
+        # This tag should include both the row and column direction cosines
+        dcm.ImageOrientationPatient = new_row_cosines + new_col_cosines
+
+        # Save the modified DICOM file
+        dcm.save_as(file_path)
+        print(f"Updated orientation for {file_name}")
+
+
+# Define the new direction cosines
+# Row vector [0, 1, 0] (Anterior to Posterior)
+# Column vector [1, 0, 0] (Left to Right)
+new_row_cosines = [0, 1, 0]  # Corresponds to moving from anterior to posterior
+new_col_cosines = [1, 0, 0]  # Corresponds to moving from left to right
+
+# Specify the directory containing the DICOM files
+dicom_directory = r'C:\Users\lidio\Documents\MATLAB\ying hwei code\Testbrain\output'
+
+# Call the function to update the direction cosines
+update_dicom_orientation(dicom_directory, new_row_cosines, new_col_cosines)
